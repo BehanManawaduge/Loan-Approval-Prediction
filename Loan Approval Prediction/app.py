@@ -1,68 +1,69 @@
-This is the main Python file that will handle the backend logic, including loading the model, processing user inputs, and returning predictions.
-
-python
-Copy
-from flask import Flask, request, render_template, jsonify
+import os
 import numpy as np
-import joblib
+import pandas as pd
+from flask import Flask, request, jsonify, render_template
 from tensorflow.keras.models import load_model
 from sklearn.preprocessing import StandardScaler
+import json
 
 # Initialize Flask app
-app = Flask(_name_)
+app = Flask(__name__)
 
-# Load the model, scaler, and label encoder
-model = load_model('model/loan_approval_model.h5')
-scaler = joblib.load('model/scaler.pkl')
-le = joblib.load('model/label_encoder.pkl')
+# Load the trained model
+model = load_model("model/loan_approval_model.h5")
+scaler = StandardScaler()
 
-# Define a route for the main page
+
+# Route for the homepage
 @app.route('/')
 def home():
-    return render_template('index.html')
+    return render_template('index.html')  # Render a simple HTML form for user input
 
-# Define a route for prediction
+
+# API route for making predictions
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
         # Get data from the form
-        input_data = [
-            float(request.form['age']),
-            float(request.form['income']),
-            float(request.form['loan_amount']),
-            float(request.form['credit_score']),
-            request.form['employment_status'],
-            request.form['housing_type']
-        ]
+        data = request.get_json(force=True)
 
-        # Preprocess the input data
-        input_data_encoded = np.array(input_data).reshape(1, -1)
+        # Extract features from the incoming request
+        features = np.array([data["features"]])  # Expecting a list of features
 
-        # One-hot encode the categorical data (employment_status and housing_type)
-        input_data_encoded = np.array(input_data_encoded, dtype=str)
-        employment_status = input_data_encoded[0, 4]
-        housing_type = input_data_encoded[0, 5]
+        # Preprocessing the features
+        features_scaled = scaler.fit_transform(features)
 
-        input_data_encoded = np.delete(input_data_encoded, [4, 5], axis=1)
-        employment_status_encoded = [1 if x == employment_status else 0 for x in ["Employed", "Self-Employed", "Unemployed"]]
-        housing_type_encoded = [1 if x == housing_type else 0 for x in ["Rent", "Own"]]
-        
-        input_data_encoded = np.concatenate((input_data_encoded, employment_status_encoded, housing_type_encoded), axis=1)
+        # Make prediction
+        prediction = model.predict(features_scaled)
+        prediction_binary = (prediction > 0.5).astype(int)
 
-        # Scale the input data using the same scaler used during training
-        input_data_scaled = scaler.transform(input_data_encoded)
-
-        # Make the prediction
-        prediction = model.predict(input_data_scaled)
-
-        # Convert the prediction to loan status
-        loan_status = le.inverse_transform([int(prediction > 0.5)])[0]
-
-        # Return the result to the user
-        return render_template('index.html', loan_status=loan_status)
+        # Return the prediction
+        response = {"loan_status": prediction_binary.flatten().tolist()}
+        return jsonify(response)
 
     except Exception as e:
-        return jsonify({'error': str(e)})
+        return jsonify({"error": str(e)})
 
-if _name_ == '_main_':
+
+# Route to get prediction via an HTML form (if front-end is added)
+@app.route('/predict_form', methods=['POST'])
+def predict_form():
+    # Collect the features from form input (these should correspond to the 26 features expected by the model)
+    features = [float(x) for x in request.form.values()]
+
+    # Ensure that the input features are the same as during training (e.g., using scaling, encoding, etc.)
+    # Preprocess the features (this should match your training preprocessing, e.g., scaling)
+    features_scaled = scaler.transform([features])  # Use scaler from the training phase to scale
+
+    # Predict
+    prediction = model.predict(features_scaled)
+    prediction_binary = (prediction > 0.5).astype(int)
+
+    # Return prediction result
+    return render_template('index.html', prediction_text=f"Loan Status: {'Approved' if prediction_binary[0][0] == 1 else 'Denied'}")
+
+
+
+# Run the app
+if __name__ == "__main__":
     app.run(debug=True)
