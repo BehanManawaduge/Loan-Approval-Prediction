@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loan Approval Prediction</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Loan Approval Prediction</h1>
+        <form method="POST" action="/predict">
+            <label for="age">Age:</label>
+            <input type="number" name="age" required>
+
+            <label for="income">Annual Income:</label>
+            <input type="number" name="income" required>
+
+            <label for="loan_amount">Loan Amount:</label>
+            <input type="number" name="loan_amount" required>
+
+            <label for="credit_score">Credit Score:</label>
+            <input type="number" name="credit_score" required>
+
+            <label for="employment_status">Employment Status:</label>
+            <select name="employment_status" required>
+                <option value="Employed">Employed</option>
+                <option value="Self-Employed">Self-Employed</option>
+                <option value="Unemployed">Unemployed</option>
+            </select>
+
+            <label for="housing_type">Housing Type:</label>
+            <select name="housing_type" required>
+                <option value="Rent">Rent</option>
+                <option value="Own">Own</option>
+            </select>
+
+            <button type="submit">Submit</button>
+        </form>
+
+        {% if loan_status %}
+        <h2>Loan Status: {{ loan_status }}</h2>
+        {% endif %}
+    </div>
+</body>
+</html>
